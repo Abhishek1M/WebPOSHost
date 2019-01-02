@@ -1,0 +1,275 @@
+swagger: '2.0'
+info:
+  description: WebPOSHost
+  version: V1.0
+  title: WebPOSHost
+  termsOfService: TOS
+  contact:
+    name: Abhishek
+    url: 'http://www.perseuspay.com'
+    email: mukhopadhyay.abhishek@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0'
+host: 'www.perseuspay.com'
+basePath: /v1p0
+tags:
+  - name: webposhost
+    description: WPH Controller
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /pos/sale:
+    post:
+      tags:
+        - sale
+      summary: Sale Transaction
+      operationId: pos.sale
+      produces:
+        - application/json;charset=UTF-8
+      parameters:
+        - name: apikey
+          in: header
+          description: apikey
+          required: true
+          type: string
+        - in: body
+          name: salerequest
+          description: request
+          required: true
+          schema:
+            $ref: '#/definitions/SaleEntity'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SaleResponseEntity'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Invalid Format
+        '500':
+          description: Server Error
+      deprecated: false
+  /pos/preauth:
+    post:
+      tags:
+        - preauth
+      summary: PreAuth Transaction
+      operationId: pos.preauth
+      produces:
+        - application/json;charset=UTF-8
+      parameters:
+        - name: apikey
+          in: header
+          description: apikey
+          required: true
+          type: string
+        - in: body
+          name: salerequest
+          description: request
+          required: true
+          schema:
+            $ref: '#/definitions/SaleEntity'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SaleResponseEntity'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Invalid Format
+        '500':
+          description: Server Error
+      deprecated: false
+definitions:
+  SaleEntity:
+    type: object
+    required:
+      - amount_tran
+      - batchnr
+      - date
+      - mid
+      - fromaccount
+      - posentrymode
+      - stan
+      - tid
+      - time
+      - track2
+      - transactionid
+    properties:
+      addlfield:
+        type: string
+        example: 12345678
+        description: Additional Field
+      amount_addl:
+        type: string
+        example: 0
+        description: Additional Amount / Cash Amount (minor)
+      amount_tran:
+        type: string
+        example: 100
+        description: Transaction Amount (minor)
+      bankcode:
+        type: string
+        example: BNK00001
+        description: Bank Code
+      batchnr:
+        type: string
+        example: 1
+        description: Transaction Batch Number
+      ccy_tran:
+        type: string
+        example: 356
+        description: Transaction Currency Code
+      date:
+        type: string
+        example: '0327'
+        description: Transaction Date (MMDD)
+      emv_request:
+        type: string
+        description: EMV Request Data
+      mcc:
+        type: string
+        example: 5732
+        description: Merchant Category Code
+      mecity:
+        type: string
+        example: NEW DELHI
+        description: Merchant City
+      mecountry:
+        type: string
+        example: IN
+        description: Merchant Country
+      mename:
+        type: string
+        example: TEST Merchant
+        description: Merchant Name
+      merchanttype:
+        type: string
+        example: S
+        description: Merchant Type (Small / Big)
+        enum:
+          - S
+          - B
+      mestate:
+        type: string
+        example: DL
+        description: Merchant State
+      mid:
+        type: string
+        example: 123456789012345
+        description: Merchant ID
+      fromaccount:
+        type: string
+        example: '00'
+        description: 'From Account (2 digits). 00 - Def 10 - Sav, 20 - Cur, 30 - Crd'
+        enum: 
+        - '00'
+        - '10'
+        - '20'
+        - '30'
+      pinblock:
+        type: string
+        example: 1234567890ABCDEF
+        description: PIN Block
+      posentrymode:
+        type: string
+        example: 901
+        description: 'POS Entry Mode. 051 -- EMV, 901 -- Mag, 911 -- Contactless Mag, 071 -- Contactless EMV'
+        enum:
+          - '901'
+          - '911'
+          - '051'
+          - '071'
+      stan:
+        type: string
+        example: 123456
+        description: STAN (6 digits)
+      tid:
+        type: string
+        example: 12345678
+        description: Terminal ID
+      time:
+        type: string
+        example: 123400
+        description: Transaction Time (HHMMSS)
+      track2:
+        type: string
+        description: Track2 in Encrypted Format
+      transactionid:
+        type: string
+        example: 123
+        description: Transaction ID
+      zipcode:
+        type: string
+        example: 110099
+        description: ZIPCode
+    title: SaleEntity
+    description: Sale Transaction Object
+  SaleResponseEntity:
+    type: object
+    properties:
+      amount_tran:
+        type: string
+        example: 100
+        description: Transaction Amount (minor) - Same as request
+      authid:
+        type: string
+        example: UNI000
+        description: Authorization ID
+      binowner:
+        type: string
+        example: VISA
+        description: BIN Issued By (Scheme)
+      cardtype:
+        type: string
+        example: C
+        description: 'Card Type (C - Credit, P - Prepaid, D - Debit etc).'
+      date:
+        type: string
+        example: '0327'
+        description: Transaction Date (MMDD) - Same as request
+      emv_response:
+        type: string
+        description: EMV Response Data
+      pan:
+        type: string
+        example: 1234567890123456
+        description: Card Number
+      rrn:
+        type: string
+        example: 000123456789
+        description: Retrieval Reference Nr (RRN)
+      rsp_code:
+        type: string
+        example: '00'
+        description: Response Code
+      stan:
+        type: string
+        example: 123456
+        description: STAN (6 digits) - Same as request
+      tid:
+        type: string
+        example: 12345678
+        description: Terminal ID - Same as request
+      time:
+        type: string
+        example: 123400
+        description: Transaction Time (HHMMSS) - Same as request
+      transactionid:
+        type: string
+        example: 123
+        description: Transaction ID - Same as request
+    title: SaleResponseEntity

@@ -1,0 +1,218 @@
+import connexion
+import simplejson as json
+import utilities
+import requests
+
+from flask import abort, jsonify
+
+
+def getterminfo(mid, tid, bankcode):
+    terminfo = {}
+
+    terminfo["acq_node_name"] = "ADEMO"
+    terminfo["bank_name"] = "DEMOPARTICIPANT"
+
+    return terminfo
+
+
+def sale(salerequest):
+    """
+    This function takes in the request and performs the Sale transaction.
+
+    :return:    Sale response body
+    """
+    # Fetch Terminal Info
+    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"))
+
+    msg = {}
+    msg["MsgType"] = "0200"
+    msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
+    msg["F004"] = salerequest.get("amount_tran", "0")
+    msg["F007"] = utilities.getF007()
+    msg["F011"] = salerequest.get("stan", None)
+    msg["F012"] = salerequest.get("time", None)
+    msg["F013"] = salerequest.get("date", None)
+    msg["F022"] = salerequest.get("posentrymode", None)
+    msg["F025"] = "00"
+    msg["F035"] = salerequest.get("track2", None)
+    msg["F041"] = salerequest.get("tid", None)
+    msg["F042"] = salerequest.get("mid", None)
+
+    f043 = salerequest.get("mename").ljust(23)+salerequest.get("mecity").ljust(
+        13)+salerequest.get("mestate").ljust(2)+salerequest.get("mecountry").ljust(2)
+    msg["F043"] = f043
+
+    msg["F049"] = salerequest.get("ccy_tran", None)
+
+    if salerequest.get("pinblock"):
+        msg["F052"] = salerequest.get("pinblock", None)
+
+    if salerequest.get("emv_request"):
+        msg["F055"] = salerequest.get("emv_request", None)
+
+    msg["F062"] = salerequest.get("transactionid", None)
+
+    nodeinfo = terminfo["acq_node_name"].ljust(15) + " ".ljust(15) + \
+        salerequest.get("mid").ljust(15)+" ".ljust(15)
+    msg["F122"] = nodeinfo
+
+    acq_node_key = msg["MsgType"] + ":" + msg["F041"] + \
+        ":" + msg["F011"] + ":" + msg["F007"]
+
+    msg["F123_001"] = acq_node_key
+    msg["F123_003"] = salerequest.get("mid")
+    msg["F123_004"] = salerequest.get("tid")
+    msg["F123_005"] = terminfo["bank_name"]
+    msg["F123_006"] = salerequest.get("batchnr")
+    msg["F123_008"] = salerequest.get("mid")
+    msg["F123_011"] = "003"  # POS
+
+#    print(json.dumps(msg))
+
+    tm_request = json.dumps(msg)
+    tm_headers = {'Content-Type': 'application/json'}
+
+    saleresponse = {}
+    saleresponse['amount_tran'] = salerequest.get("amount_tran", None)
+    saleresponse['date'] = salerequest.get("date", None)
+    saleresponse['stan'] = salerequest.get("stan", None)
+    saleresponse['tid'] = salerequest.get("tid", None)
+    saleresponse['time'] = salerequest.get("time", None)
+    saleresponse['transactionid'] = salerequest.get("transactionid", None)
+
+    try:
+        rsp = requests.post(utilities.getTMURL(),
+                            headers=tm_headers, data=tm_request)
+
+        msg_rsp = json.loads(rsp.text)
+
+        if 'F038' in msg_rsp:
+            saleresponse['authid'] = msg_rsp["F038"]
+
+        kvobj = utilities.getKVPObject(msg_rsp["F120"])
+
+        if 'bin_owner' in kvobj:
+            saleresponse['bin_owner'] = kvobj["bin_owner"]
+
+        if 'card_type' in kvobj:
+            saleresponse['cardtype'] = kvobj["card_type"]
+
+        if 'F002' in msg_rsp:
+            saleresponse['pan'] = msg_rsp["F002"]
+
+        if 'F037' in msg_rsp:
+            saleresponse['rrn'] = msg_rsp["F037"]
+
+        if 'F039' in msg_rsp:
+            saleresponse['resp_code'] = msg_rsp["F039"]
+
+        if 'F055' in msg_rsp:
+            saleresponse['emv_response'] = msg_rsp["F055"]
+    except requests.exceptions.RequestException as e:
+        print("Cannot connect to TM")
+        print(e)
+        saleresponse['resp_code'] = "96"
+        abort(500, json.dumps(saleresponse))
+
+    return jsonify(saleresponse)
+
+def preauth(salerequest):
+    """
+    This function takes in the request and performs the Sale transaction.
+
+    :return:    Sale response body
+    """
+    # Fetch Terminal Info
+    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"))
+
+    msg = {}
+    msg["MsgType"] = "0100"
+    msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
+    msg["F004"] = salerequest.get("amount_tran", "0")
+    msg["F007"] = utilities.getF007()
+    msg["F011"] = salerequest.get("stan", None)
+    msg["F012"] = salerequest.get("time", None)
+    msg["F013"] = salerequest.get("date", None)
+    msg["F022"] = salerequest.get("posentrymode", None)
+    msg["F025"] = "00"
+    msg["F035"] = salerequest.get("track2", None)
+    msg["F041"] = salerequest.get("tid", None)
+    msg["F042"] = salerequest.get("mid", None)
+
+    f043 = salerequest.get("mename").ljust(23)+salerequest.get("mecity").ljust(
+        13)+salerequest.get("mestate").ljust(2)+salerequest.get("mecountry").ljust(2)
+    msg["F043"] = f043
+
+    msg["F049"] = salerequest.get("ccy_tran", None)
+
+    if salerequest.get("pinblock"):
+        msg["F052"] = salerequest.get("pinblock", None)
+
+    if salerequest.get("emv_request"):
+        msg["F055"] = salerequest.get("emv_request", None)
+
+    msg["F062"] = salerequest.get("transactionid", None)
+
+    nodeinfo = terminfo["acq_node_name"].ljust(15) + " ".ljust(15) + \
+        salerequest.get("mid").ljust(15)+" ".ljust(15)
+    msg["F122"] = nodeinfo
+
+    acq_node_key = msg["MsgType"] + ":" + msg["F041"] + \
+        ":" + msg["F011"] + ":" + msg["F007"]
+
+    msg["F123_001"] = acq_node_key
+    msg["F123_003"] = salerequest.get("mid")
+    msg["F123_004"] = salerequest.get("tid")
+    msg["F123_005"] = terminfo["bank_name"]
+    msg["F123_006"] = salerequest.get("batchnr")
+    msg["F123_008"] = salerequest.get("mid")
+    msg["F123_011"] = "003"  # POS
+
+#    print(json.dumps(msg))
+
+    tm_request = json.dumps(msg)
+    tm_headers = {'Content-Type': 'application/json'}
+
+    saleresponse = {}
+    saleresponse['amount_tran'] = salerequest.get("amount_tran", None)
+    saleresponse['date'] = salerequest.get("date", None)
+    saleresponse['stan'] = salerequest.get("stan", None)
+    saleresponse['tid'] = salerequest.get("tid", None)
+    saleresponse['time'] = salerequest.get("time", None)
+    saleresponse['transactionid'] = salerequest.get("transactionid", None)
+
+    try:
+        rsp = requests.post(utilities.getTMURL(),
+                            headers=tm_headers, data=tm_request)
+
+        msg_rsp = json.loads(rsp.text)
+
+        if 'F038' in msg_rsp:
+            saleresponse['authid'] = msg_rsp["F038"]
+
+        kvobj = utilities.getKVPObject(msg_rsp["F120"])
+
+        if 'bin_owner' in kvobj:
+            saleresponse['bin_owner'] = kvobj["bin_owner"]
+
+        if 'card_type' in kvobj:
+            saleresponse['cardtype'] = kvobj["card_type"]
+
+        if 'F002' in msg_rsp:
+            saleresponse['pan'] = msg_rsp["F002"]
+
+        if 'F037' in msg_rsp:
+            saleresponse['rrn'] = msg_rsp["F037"]
+
+        if 'F039' in msg_rsp:
+            saleresponse['resp_code'] = msg_rsp["F039"]
+
+        if 'F055' in msg_rsp:
+            saleresponse['emv_response'] = msg_rsp["F055"]
+    except requests.exceptions.RequestException as e:
+        print("Cannot connect to TM")
+        print(e)
+        saleresponse['resp_code'] = "96"
+        abort(500, json.dumps(saleresponse))
+
+    return jsonify(saleresponse)
