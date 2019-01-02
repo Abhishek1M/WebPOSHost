@@ -3,12 +3,18 @@ import simplejson as json
 import utilities
 import requests
 
-from flask import abort, jsonify
+from flask import abort, jsonify, request
 
 
-def getterminfo(mid, tid, bankcode):
+def getterminfo(mid, tid, bankcode, apikey):
+    '''
+    This method fetches the data from the SQL tables
+
+    :return:    Terminal Info Object
+    '''
     terminfo = {}
 
+    terminfo["found"] = True
     terminfo["acq_node_name"] = "ADEMO"
     terminfo["bank_name"] = "DEMOPARTICIPANT"
 
@@ -17,12 +23,17 @@ def getterminfo(mid, tid, bankcode):
 
 def sale(salerequest):
     """
-    This function takes in the request and performs the Sale transaction.
+    This method takes in the request and performs the Sale transaction.
 
     :return:    Sale response body
     """
+    apikey = request.headers.get("apikey")
+
     # Fetch Terminal Info
-    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"))
+    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"), apikey)
+
+    if not terminfo["found"]:
+        return abort(404)
 
     msg = {}
     msg["MsgType"] = "0200"
@@ -213,6 +224,6 @@ def preauth(salerequest):
         print("Cannot connect to TM")
         print(e)
         saleresponse['resp_code'] = "96"
-        abort(500, json.dumps(saleresponse))
+        return abort(500, json.dumps(saleresponse))
 
     return jsonify(saleresponse)
