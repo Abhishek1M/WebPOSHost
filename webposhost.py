@@ -8,7 +8,7 @@ app.add_api('swagger.yml')
 
 @app.route('/')
 def index():
-    return 'Index Page'
+    return 'WebPOSHost V1.0'
 
 # If we're running in stand alone mode, run the application
 if __name__ == '__main__':

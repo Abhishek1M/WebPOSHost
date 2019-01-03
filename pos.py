@@ -7,37 +7,50 @@ from flask import abort, jsonify, request
 
 
 def getterminfo(mid, tid, bankcode, apikey):
-    '''
+    '''-------------------------------------------------------------------------
     This method fetches the data from the SQL tables
 
     :return:    Terminal Info Object
-    '''
+    -------------------------------------------------------------------------'''
     terminfo = {}
 
     terminfo["found"] = True
     terminfo["acq_node_name"] = "ADEMO"
     terminfo["bank_name"] = "DEMOPARTICIPANT"
+    terminfo["pdc"] = "51010151414C101"
 
     return terminfo
 
 
 def sale(salerequest):
-    """
+    '''-------------------------------------------------------------------------
     This method takes in the request and performs the Sale transaction.
 
     :return:    Sale response body
-    """
+    -------------------------------------------------------------------------'''
     apikey = request.headers.get("apikey")
+    kvp = {}
 
     # Fetch Terminal Info
-    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"), apikey)
+    terminfo = getterminfo(salerequest.get("mid"), salerequest.get(
+        "tid"), salerequest.get("bankcode"), apikey)
 
     if not terminfo["found"]:
-        return abort(404)
+        return abort(422)
 
     msg = {}
     msg["MsgType"] = "0200"
-    msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
+
+    if salerequest.get("amount_addl"):
+        cashamt = int(salerequest.get("amount_addl"))
+        if cashamt > 0:
+            msg["F003"] = "09" + salerequest.get("fromaccount", "00") + "00"
+            kvp["_41_CASHBACK_AMOUNT"] = salerequest.get("amount_addl").rjust(12,'0')
+        else:
+            msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
+    else:
+        msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
+
     msg["F004"] = salerequest.get("amount_tran", "0")
     msg["F007"] = utilities.getF007()
     msg["F011"] = salerequest.get("stan", None)
@@ -57,10 +70,14 @@ def sale(salerequest):
 
     if salerequest.get("pinblock"):
         msg["F052"] = salerequest.get("pinblock", None)
+        kvp["PINUSED"] = "1"
+    else:
+        kvp["PINUSED"] = "0"
 
     if salerequest.get("emv_request"):
         msg["F055"] = salerequest.get("emv_request", None)
 
+    msg["F061"] = terminfo["pdc"]
     msg["F062"] = salerequest.get("transactionid", None)
 
     nodeinfo = terminfo["acq_node_name"].ljust(15) + " ".ljust(15) + \
@@ -78,7 +95,9 @@ def sale(salerequest):
     msg["F123_008"] = salerequest.get("mid")
     msg["F123_011"] = "003"  # POS
 
-#    print(json.dumps(msg))
+    kvp["ZIPCODE"] = salerequest.get("zipcode")
+
+    msg["F120"] = utilities.getKVPString(kvp)
 
     tm_request = json.dumps(msg)
     tm_headers = {'Content-Type': 'application/json'}
@@ -123,23 +142,31 @@ def sale(salerequest):
         print("Cannot connect to TM")
         print(e)
         saleresponse['resp_code'] = "96"
-        abort(500, json.dumps(saleresponse))
+        abort(503, json.dumps(saleresponse))
 
     return jsonify(saleresponse)
 
+
 def preauth(salerequest):
-    """
-    This function takes in the request and performs the Sale transaction.
+    '''-------------------------------------------------------------------------
+    This method takes in the request and performs the Sale transaction.
 
     :return:    Sale response body
-    """
+    -------------------------------------------------------------------------'''
+    apikey = request.headers.get("apikey")
+    kvp = {}
+
     # Fetch Terminal Info
-    terminfo = getterminfo(salerequest.get("mid"),salerequest.get("tid"),salerequest.get("bankcode"))
+    terminfo = getterminfo(salerequest.get("mid"), salerequest.get(
+        "tid"), salerequest.get("bankcode"), apikey)
+
+    if not terminfo["found"]:
+        return abort(422)
 
     msg = {}
     msg["MsgType"] = "0100"
     msg["F003"] = "00" + salerequest.get("fromaccount", "00") + "00"
-    msg["F004"] = salerequest.get("amount_tran", "0")
+    msg["F004"] = salerequest.get("amount_tran", "0").rjust(12, '0')
     msg["F007"] = utilities.getF007()
     msg["F011"] = salerequest.get("stan", None)
     msg["F012"] = salerequest.get("time", None)
@@ -158,10 +185,14 @@ def preauth(salerequest):
 
     if salerequest.get("pinblock"):
         msg["F052"] = salerequest.get("pinblock", None)
+        kvp["PINUSED"] = "1"
+    else:
+        kvp["PINUSED"] = "0"
 
     if salerequest.get("emv_request"):
         msg["F055"] = salerequest.get("emv_request", None)
 
+    msg["F061"] = terminfo["pdc"]
     msg["F062"] = salerequest.get("transactionid", None)
 
     nodeinfo = terminfo["acq_node_name"].ljust(15) + " ".ljust(15) + \
@@ -179,7 +210,9 @@ def preauth(salerequest):
     msg["F123_008"] = salerequest.get("mid")
     msg["F123_011"] = "003"  # POS
 
-#    print(json.dumps(msg))
+    kvp["ZIPCODE"] = salerequest.get("zipcode")
+
+    msg["F120"] = utilities.getKVPString(kvp)
 
     tm_request = json.dumps(msg)
     tm_headers = {'Content-Type': 'application/json'}
@@ -224,6 +257,24 @@ def preauth(salerequest):
         print("Cannot connect to TM")
         print(e)
         saleresponse['resp_code'] = "96"
-        return abort(500, json.dumps(saleresponse))
+        abort(503, json.dumps(saleresponse))
 
     return jsonify(saleresponse)
+
+
+def preauthcomplete(preauthcompleterequest):
+    '''-------------------------------------------------------------------------
+    This method takes in the preauth complete request and performs the PreAuth Complete transaction.
+
+    :return:    PreAuth Complete response body
+    -------------------------------------------------------------------------'''
+    abort(400)
+
+
+def voidreversal(voidrequest):
+    '''-------------------------------------------------------------------------
+    This method takes in the request and performs the Void/Reversal transaction.
+
+    :return:    Void response body
+    -------------------------------------------------------------------------'''
+    abort(400)
