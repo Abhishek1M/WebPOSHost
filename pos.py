@@ -56,6 +56,7 @@ def processtransaction(ptrequest, mti, apikey):
     msg["F011"] = ptrequest.get("stan", None)
     msg["F012"] = ptrequest.get("time", None)
     msg["F013"] = ptrequest.get("date", None)
+    msg["F018"] = ptrequest.get("mcc", None)
     msg["F022"] = ptrequest.get("posentrymode", None)
     msg["F025"] = "00"
     msg["F035"] = ptrequest.get("track2", None)
@@ -96,6 +97,7 @@ def processtransaction(ptrequest, mti, apikey):
     msg["F123_011"] = "003"  # POS
 
     kvp["ZIPCODE"] = ptrequest.get("zipcode")
+    kvp["MERCHANTTYPE"] = ptrequest.get("merchanttype")
 
     msg["F120"] = utilities.getKVPString(kvp)
 
