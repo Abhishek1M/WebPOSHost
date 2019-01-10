@@ -1,26 +1,35 @@
 from datetime import datetime
+import pyodbc
+import posconf
+
+
+def getconnection():
+    '''-------------------------------------------------------------------------
+    Gets the database connection. Required pyodbc, unixodbc & freetds
+
+    :return:    Database connection object
+    -------------------------------------------------------------------------'''
+    con_string = 'DSN=%s;UID=%s;PWD=%s;DATABASE=%s;' % (
+        posconf.dsn, posconf.user, posconf.password, posconf.dbname)
+    cnxn = pyodbc.connect(con_string)
+    return cnxn
 
 
 def getF007():
-    '''
+    '''-------------------------------------------------------------------------
     Formats the date/time and returns it in ISO8583 - Field 007 format
-    '''
+
+    :return:    Date/Time in the format MMDDhhmmss
+    -------------------------------------------------------------------------'''
     return datetime.now().strftime(("%m%d%H%M%S"))
 
 
-def getTMURL():
-    '''
-    Returns the TM URL
-    '''
-    url = "http://127.0.0.1:15000/V001/01/transaction"
-    
-    return url
-
-
 def getKVPString(kvpobj):
-    '''
+    '''-------------------------------------------------------------------------
     Parses the given object and forms the Key Value Pair String
-    '''
+
+    :return:    Key/Value pair string
+    -------------------------------------------------------------------------'''
     data = ""
 
     for key in kvpobj:
@@ -31,9 +40,11 @@ def getKVPString(kvpobj):
 
 
 def getKVPObject(kvpstring):
-    '''
+    '''-------------------------------------------------------------------------
     Parses the given string and forms the Key Value Pair Object
-    '''
+
+    :return:    Dictionary object
+    -------------------------------------------------------------------------'''
     kvpobj = {}
 
     datalen = len(kvpstring)

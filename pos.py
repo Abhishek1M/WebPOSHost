@@ -2,6 +2,7 @@ import connexion
 import simplejson as json
 import utilities
 import requests
+import posconf
 
 from flask import abort, jsonify, request
 
@@ -113,7 +114,7 @@ def processtransaction(ptrequest, mti, apikey):
     saleresponse['transactionid'] = ptrequest.get("transactionid", None)
 
     try:
-        rsp = requests.post(utilities.getTMURL(),
+        rsp = requests.post(posconf.tmurl,
                             headers=tm_headers, data=tm_request, timeout=100)
 
         msg_rsp = json.loads(rsp.text)
