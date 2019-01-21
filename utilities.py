@@ -1,6 +1,8 @@
 from datetime import datetime
 import pyodbc
 import posconf
+import random
+import string
 
 
 def getconnection():
@@ -30,7 +32,7 @@ def getKVPString(kvpobj):
 
     :return:    Key/Value pair string
     -------------------------------------------------------------------------'''
-    data = ""
+    data = ''
 
     for key in kvpobj:
         data = data+str(len(key)).rjust(3, '0')+key
@@ -68,3 +70,12 @@ def getKVPObject(kvpstring):
         kvpobj[key] = value
 
     return kvpobj
+
+
+def generate_key(length):
+    '''-------------------------------------------------------------------------
+    Generates a Random Key for use
+
+    :return:    Key
+    -------------------------------------------------------------------------'''
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))

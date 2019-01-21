@@ -3,6 +3,7 @@ import simplejson as json
 import utilities
 import requests
 import posconf
+import pyodbc
 
 from flask import abort, jsonify, request
 
@@ -15,10 +16,56 @@ def getterminfo(mid, tid, bankcode, apikey):
     -------------------------------------------------------------------------'''
     terminfo = {}
 
-    terminfo["found"] = True
-    terminfo["acq_node_name"] = "ADEMO"
-    terminfo["bank_name"] = "DEMOPARTICIPANT"
-    terminfo["pdc"] = "51010151414C101"
+    conn = utilities.getconnection()
+    crsr = conn.cursor()
+    params = (tid, mid, posconf.modulename, apikey)
+    crsr.execute("{CALL cm_fetchterminfo(?,?,?,?)}", params)
+
+    terminfo["found"] = False
+    terminfo["errorcode"] = 400
+
+    rows = crsr.fetchall()
+
+    for row in rows:
+        terminfo["errorcode"] = int(row.RC)
+        terminfo['errordesc'] = row.RCDESC
+        if row.RC == 200:
+            terminfo["found"] = True
+            terminfo["acq_node_name"] = row.acq_node_name
+            terminfo["bank_name"] = row.partname
+            terminfo["retailer"] = row.iretailer
+            terminfo["tstatus"] = row.tstatus
+            terminfo["pdc"] = row.pos_data_code
+            terminfo["curr_code"] = row.curr_code,
+            terminfo["name_loc"] = row.name_loc
+            terminfo["city"] = row.city
+            terminfo["state"] = row.state
+            terminfo["countrycode"] = row.countrycode
+            terminfo["mcc"] = row.store_type
+            terminfo["status"] = row.status
+            terminfo["zipcode"] = row.zipcode
+            terminfo["part_id"] = row.part_id
+            terminfo["encenabled"] = row.encenabled
+            terminfo["pin_master_key"] = row.pin_master_key
+            terminfo["groupname"] = row.group_name
+            terminfo["sale"] = row.sale
+            terminfo["void"] = row.void
+            terminfo["refund"] = row.refund
+            terminfo["preauth"] = row.preauth
+            terminfo["preauthcomp"] = row.preauthcomp
+            terminfo["salewcash"] = row.salewcash
+            terminfo["cashonly"] = row.cashonly
+            terminfo["manualsale"] = row.manualsale
+            terminfo["dcc"] = row.dcc
+            terminfo["ica"] = row.ica
+            terminfo["dev_type"] = row.device_type
+            terminfo["tid"] = tid
+            terminfo["mid"] = mid
+            terminfo["merchanttype"] = row.merchanttype
+        else:
+            terminfo["found"] = False
+    
+    conn.close()
 
     return terminfo
 
@@ -35,8 +82,8 @@ def processtransaction(ptrequest, mti, apikey):
     terminfo = getterminfo(ptrequest.get("mid"), ptrequest.get(
         "tid"), ptrequest.get("bankcode"), apikey)
 
-    if not terminfo["found"]:
-        return abort(422)
+    if not terminfo['found']:
+        return abort(terminfo['errorcode'], terminfo['errordesc'])
 
     msg = {}
     msg["MsgType"] = mti
@@ -95,7 +142,7 @@ def processtransaction(ptrequest, mti, apikey):
     msg["F123_005"] = terminfo["bank_name"]
     msg["F123_006"] = ptrequest.get("batchnr")
     msg["F123_008"] = ptrequest.get("mid")
-    msg["F123_011"] = "003"  # POS
+    msg["F123_011"] = terminfo["dev_type"]  # POS
 
     kvp["ZIPCODE"] = ptrequest.get("zipcode")
     kvp["MERCHANTTYPE"] = ptrequest.get("merchanttype")
@@ -103,7 +150,7 @@ def processtransaction(ptrequest, mti, apikey):
     msg["F120"] = utilities.getKVPString(kvp)
 
     tm_request = json.dumps(msg)
-    tm_headers = {'Content-Type': 'application/json'}
+    tm_headers = {'Content-Type': 'application/json', 'Connection':'keep-alive'}
 
     saleresponse = {}
     saleresponse['amount_tran'] = ptrequest.get("amount_tran", None)
@@ -115,32 +162,38 @@ def processtransaction(ptrequest, mti, apikey):
 
     try:
         rsp = requests.post(posconf.tmurl,
-                            headers=tm_headers, data=tm_request, timeout=100)
+                            headers=tm_headers, data=tm_request, timeout=posconf.tmtimeout)
 
-        msg_rsp = json.loads(rsp.text)
+        if(rsp.status_code == 200):
+            msg_rsp = json.loads(rsp.text)
 
-        if 'F038' in msg_rsp:
-            saleresponse['authid'] = msg_rsp["F038"]
+            kvobj = utilities.getKVPObject(msg_rsp["F120"])
 
-        kvobj = utilities.getKVPObject(msg_rsp["F120"])
+            if 'bin_owner' in kvobj:
+                saleresponse['bin_owner'] = kvobj["bin_owner"]
 
-        if 'bin_owner' in kvobj:
-            saleresponse['bin_owner'] = kvobj["bin_owner"]
+            if 'card_type' in kvobj:
+                saleresponse['cardtype'] = kvobj["card_type"]
 
-        if 'card_type' in kvobj:
-            saleresponse['cardtype'] = kvobj["card_type"]
+            if 'F002' in msg_rsp:
+                saleresponse['pan'] = msg_rsp["F002"]
 
-        if 'F002' in msg_rsp:
-            saleresponse['pan'] = msg_rsp["F002"]
+            if 'F037' in msg_rsp:
+                saleresponse['rrn'] = msg_rsp["F037"]
 
-        if 'F037' in msg_rsp:
-            saleresponse['rrn'] = msg_rsp["F037"]
+            if 'F038' in msg_rsp:
+                saleresponse['authid'] = msg_rsp["F038"]
 
-        if 'F039' in msg_rsp:
-            saleresponse['resp_code'] = msg_rsp["F039"]
+            if 'F039' in msg_rsp:
+                saleresponse['resp_code'] = msg_rsp["F039"]
 
-        if 'F055' in msg_rsp:
-            saleresponse['emv_response'] = msg_rsp["F055"]
+            if 'F055' in msg_rsp:
+                saleresponse['emv_response'] = msg_rsp["F055"]
+        else:
+            print(rsp.status_code)
+            print(rsp.text)
+            saleresponse['resp_code'] = '96'
+            abort(rsp.status_code, json.dumps(saleresponse))
     except requests.exceptions.RequestException as e:
         print("Cannot connect to TM")
         print(e)
