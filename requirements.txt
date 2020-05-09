@@ -15,7 +15,7 @@ mccabe==0.6.1
 monotonic==1.5
 openapi-spec-validator==0.2.4
 pycodestyle==2.4.0
-pylint==2.2.2
+pylint==2.5.0
 PyYAML==4.2b1
 requests==2.21.0
 simplejson==3.16.0
