@@ -1,6 +1,6 @@
 connexion==2.2.0
 eventlet==0.24.1
-Flask==1.0.2
+Flask==2.2.5
 gevent==1.3.7
 greenlet==0.4.15
 gunicorn==19.9.0
