@@ -6,7 +6,7 @@ greenlet==0.4.15
 gunicorn==19.9.0
 isort==4.3.4
 itsdangerous==1.1.0
-Jinja2==2.10
+Jinja2==3.1.4
 jsonify==0.5
 jsonschema==2.6.0
 lazy-object-proxy==1.3.1
@@ -22,5 +22,5 @@ simplejson==3.16.0
 swagger-ui-bundle==0.0.2
 urllib3==1.24.1
 pyodbc==4.0.25
-Werkzeug==0.14.1
+Werkzeug==3.0.3
 wrapt==1.10.11
